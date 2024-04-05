@@ -1,0 +1,116 @@
+﻿@typeparam TItem
+
+@inject IJSRuntime JSRuntime
+
+<div @ref="container" style="overflow:auto;position:relative;width:100%;height:100%;max-height:1000px!important;max-width:1200px;">
+    <div @ref="spacer" style="max-height:1000px;">
+        @for (int i = 0; i < Math.Sqrt(Items.Count); i++)
+        {
+            <div class="row">
+                @for (int j = 0; j < Math.Sqrt(Items.Count); j++)
+                {
+                    var id = $"item-{i * Math.Sqrt(Items.Count) + j}";
+                    var item = Items[i * (int)Math.Sqrt(Items.Count) + j];
+
+                    if (visibleItems.Contains(item))
+                    {
+                        <GridVirtualizeItem Id="@id" Item="@item" ItemTemplate="@ItemTemplate" OnRefCreated="@OnRefCreated" />
+                    }
+                    else
+                    {
+                        <div id="@id" style="height: 50px;width:50px;"></div> <!-- Placeholder element -->
+                    }
+                }
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    ElementReference container;
+    ElementReference spacer;
+    Dictionary<TItem, ElementReference> itemRefs = new();
+    [Inject] public IJSRuntime JS { get; set; } = default!;
+
+    // Parameters
+    [Parameter] public RenderFragment<TItem> ItemTemplate { get; set; }
+    [Parameter] public IReadOnlyList<TItem> Items { get; set; }
+    [Parameter] public float ItemSize { get; set; }
+
+    // Other properties
+    List<TItem> visibleItems = new List<TItem>();
+
+    private DotNetObjectReference<GridVirtualize<TItem>> _dotNetObjectReference = default!;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        visibleItems = Items.ToList();
+
+        if (firstRender)
+        {
+
+            _dotNetObjectReference = DotNetObjectReference.Create(this);
+            await JS.InvokeVoidAsync("GridVirtualize.initIntersectionObserver", container, _dotNetObjectReference);
+
+            foreach (var item in Items)
+            {
+                Console.WriteLine(item.ToString());
+                if (itemRefs.TryGetValue(item, out var itemRef))
+                {
+                    Console.WriteLine("Got Ref");
+
+                    try
+                    {
+                        // Introduce a delay before observing the item
+                        await ObserveItem($"item-{itemRef.Id}");
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Error observing item {item}, {ex.Message}");
+                    }
+                }
+            }
+        }
+    }
+
+    public async Task ObserveItem(string id)
+    {
+        await JS.InvokeVoidAsync("GridVirtualize.observeItem", id);
+    }
+
+    void OnRefCreated(TItem item, ElementReference itemRef)
+    {
+        itemRefs[item] = itemRef;
+    }
+
+
+    [JSInvokable]
+    public async Task OnItemVisible(string itemId)
+    {
+        var item = itemRefs.FirstOrDefault(i => $"item-{i.Value.Id}" == itemId).Key;
+        if (item != null && !visibleItems.Contains(item))
+        {
+            visibleItems.Add(item);
+            await UpdateSpacerSize();
+            StateHasChanged();
+        }
+    }
+
+    [JSInvokable]
+    public async Task OnItemHidden(string itemId)
+    {
+        var item = itemRefs.FirstOrDefault(i => $"item-{i.Value.Id}" == itemId).Key;
+        if (item != null && visibleItems.Contains(item))
+        {
+            visibleItems.Remove(item);
+            await UpdateSpacerSize();
+            StateHasChanged();
+        }
+    }
+
+    private async Task UpdateSpacerSize()
+    {
+        var spacerSize = visibleItems.Count * ItemSize;
+        await JS.InvokeVoidAsync("GridVirtualize.updateSpacerSize", spacer, spacerSize);
+    }
+}

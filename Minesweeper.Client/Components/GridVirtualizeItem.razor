@@ -1,0 +1,23 @@
+﻿@typeparam TItem
+
+<div id="@Id" @ref="itemRef" style="position:relative;" class="GridVirtualizeItem">
+    @ItemTemplate(Item)
+</div>
+
+@code {
+    ElementReference itemRef;
+
+    // Parameters
+    [Parameter] public TItem Item { get; set; }
+    [Parameter] public RenderFragment<TItem> ItemTemplate { get; set; }
+    [Parameter] public Action<TItem, ElementReference> OnRefCreated { get; set; }
+    [Parameter] public string Id { get; set; }
+
+    protected override void OnAfterRender(bool firstRender)
+    {
+        if (firstRender)
+        {
+            OnRefCreated?.Invoke(Item, itemRef);
+        }
+    }
+}

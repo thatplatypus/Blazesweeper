@@ -1,0 +1,57 @@
+﻿<MudDialog>
+    <DialogContent>
+        <MudStack>
+            <MudStack>
+                <MudSlider @bind-Value="@_editSettings.Size" TickMarks="false" ValueLabel="true" Min="2" Max="100">🍫 Grid Size</MudSlider>
+                <MudStack Row="true" Style="">
+                    @foreach (var tick in _sizeLabels)
+                    {
+                        <MudText Typo="Typo.h6">@tick</MudText>
+                        <MudSpacer />
+                    }
+                </MudStack>
+            </MudStack>
+            <MudSlider @bind-Value="@_editSettings.Mines" ValueLabel="true" Min="1" Max="@(_editSettings.Size * _editSettings.Size)">💣 Kaboomies</MudSlider>
+            <MudStack Row="true">
+                  <MudText Typo="Typo.h6">1</MudText>
+                <MudSpacer />
+                    <MudText Typo="Typo.h6">@(_editSettings.Size * _editSettings.Size / 2)</MudText>
+                <MudSpacer />
+                    <MudText  Typo="Typo.h6">@(_editSettings.Size * _editSettings.Size)</MudText>
+            </MudStack>
+
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" OnClick="Submit">Save</MudButton>
+    </DialogActions>
+</MudDialog>
+@code {
+    [CascadingParameter]
+    MudDialogInstance MudDialog { get; set; }
+
+    [Parameter]
+    public MinesweeperGameSettings Settings { get; set; }
+
+    private MinesweeperGameSettings _editSettings { get; set; }
+
+    private string[] _sizeLabels = new string[] { "2", "10", "20", "30", "40", "50", "60", "70", "80", "90", "100"};
+
+    protected override void OnParametersSet()
+    {
+        _editSettings = new MinesweeperGameSettings
+        {
+            Size = Settings.Size,
+            Mines = Settings.Mines,
+        };
+        base.OnParametersSet();
+    }
+
+    private void Submit() {
+
+        MudDialog.Close(DialogResult.Ok(_editSettings));
+    }
+
+    void Cancel() => MudDialog.Cancel();
+    }

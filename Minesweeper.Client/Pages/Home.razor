@@ -1,0 +1,246 @@
+﻿@page "/"
+@using Minesweeper.Client.Components
+
+<PageTitle>Minesweeper</PageTitle>
+
+<MudToolBar Style="text-wrap:nowrap;">
+    <MudText>
+        🏁 @FlagsRemaining / @_configSettings.Mines
+    </MudText>
+    <MudSpacer />
+    <MudWatch @ref="_watch"
+              ShowHour="true"
+              ShowMinute="true"
+              ShowSecond="true"
+              Mode="MudExtensions.Enums.WatchMode.StopWatch">
+
+    </MudWatch>
+    <MudSpacer />
+    <MudButton OnClick="RevealAll">
+        Reveal All
+    </MudButton>
+    <MudButton OnClick="Reset">
+        Reset
+    </MudButton>
+</MudToolBar>
+
+<MudPaper Class="d-flex pa-4" Style="min-height:80vh">
+    <MudContainer Class="flex-grow-1 d-flex gap-3" Style="justify-content:center;flex-direction: column;align-items:center;" MaxWidth="MaxWidth.Large">
+        @*
+            <GridVirtualize Items="GameManager.Game.SelectMany(x => x).ToList()" ItemSize="500 / _gameSize">
+                <ItemTemplate>
+                    <Tile Height="@(500 / _gameSize + "px")" Width="@(500 / _gameSize + "px")" Data="context" TileClicked="OnTileClicked" FlagApplied="OnFlagApplied" />
+                </ItemTemplate>
+            </GridVirtualize>
+        }*@
+        
+        @foreach (var row in GameManager.Game)
+        {
+            <div class="d-flex gap-3">
+                @foreach (var tile in row)
+                {
+                    <Tile Height="@(500 / _gameSize + "px")" Width="@(500 / _gameSize + "px")" Data="tile" TileClicked="OnTileClicked" FlagApplied="OnFlagApplied" />
+                }
+            </div>
+        }
+        
+        @*
+        <div class="grid" style="grid-template-columns: repeat(@_gameSize, 1fr);">
+            @for (int i = 0; i < _gameSize; i++)
+            {
+                for (int j = 0; j < _gameSize; j++)
+                {
+                    var tile = GameManager.Game[i][j];
+                    <div class="tile" @onclick="() => OnTileClicked(tile)" @oncontextmenu:preventDefault="(() => OnFlagApplied(tile))">
+                        @if (tile.IsRevealed)
+                        {
+                            if (tile.IsMine)
+                            {
+                                <span>💣</span>
+                            }
+                            else if (GetAdjacentTiles(tile).Count > 0)
+                            {
+                                <span>@GetAdjacentTiles(tile)</span>
+                            }
+                        }
+                        else if (tile.HasFlagApplied)
+                        {
+                            <span>🚩</span>
+                        }
+                    </div>
+                }
+            }
+        </div>
+            *@
+    </MudContainer>
+</MudPaper>
+
+@code {
+    private IGameManager GameManager { get; set; } = default!;
+
+        [Inject]
+        private ISnackbar Snackbar { get; set; } = default!;
+
+        [CascadingParameter]
+        private MinesweeperGameSettings _configSettings { get; set; } = default!;
+
+        private int _gameSize = 1;
+        private int _gameMines = 10;
+
+        private MudWatch _watch { get; set; } = default!;
+
+        public int FlagsRemaining => _configSettings.Mines - GameManager?.Game.SelectMany(x => x).Count(x => x.HasFlagApplied) ?? _configSettings.Mines;
+
+        protected override void OnInitialized()
+        {
+
+            GameManager = GameCreatorFactory.CreateGame(_configSettings.Size, _configSettings.Mines);
+            _gameSize = GameManager.Settings.Size;
+            _gameMines = GameManager.Settings.Mines;
+            Console.WriteLine(_gameSize);
+        }
+
+        protected void OnTileClicked(Models.Tile tile)
+        {
+            if (_watch.Value.TotalSeconds < 1)
+                _watch.Start();
+
+            var result = GameManager.ClickTile(tile.X, tile.Y);
+
+            if (result == GameStatus.Lost)
+            {
+                _watch.Stop();
+                Snackbar.Add($"Game over", Severity.Error);
+            }
+
+            if (result == GameStatus.Won)
+            {
+                _watch.Stop();
+                Snackbar.Add($"You won in {_watch.Value}", Severity.Success);
+            }
+        }
+
+        protected void Reset()
+        {
+            _watch.Stop();
+            _watch.Reset();
+            StateHasChanged();
+            Console.WriteLine(_configSettings.Mines);
+            if (_configSettings.Mines != GameManager.Settings.Mines || _configSettings.Size != GameManager.Settings.Size)
+            {
+                GameManager = GameCreatorFactory.CreateGame(_configSettings);
+            }
+            else
+            {
+                GameManager.Reset();
+            }
+            _gameSize = GameManager.Settings.Size;
+        }
+
+        //ToDo - Move Logic to `IGameManager`
+        protected void OnFlagApplied(Models.Tile tile)
+        {
+            if (tile.HasFlagApplied)
+            {
+                tile.HasFlagApplied = !tile.HasFlagApplied;
+            }
+            else if (FlagsRemaining > 0 && !tile.IsRevealed)
+            {
+                tile.HasFlagApplied = true;
+            }
+
+            StateHasChanged();
+        }
+
+        protected void RevealAll()
+        {
+            var stopwatch = new System.Diagnostics.Stopwatch();
+            stopwatch.Start();
+            /*
+            foreach (var tile in GameManager.Game.SelectMany(x => x))
+            {
+                GameManager.ClickTile(tile.X, tile.Y);
+            }
+            */
+
+            GameManager.RevealAll();
+            stopwatch.Stop();
+            Console.WriteLine($"Time elapsed: {stopwatch.ElapsedMilliseconds} ms");
+        }
+
+        public double CalculateMineProbability(Models.Tile tile)
+        {
+            if (GameManager.Game == null || GameManager.Game.Length == 0)
+            {
+                return 0;
+            }
+            // Get all revealed tiles adjacent to the current tile
+            var adjacentRevealedTiles = GetAdjacentTiles(tile)
+                .Where(t => t.IsRevealed && t.NeighboringMines > 0);
+
+            int remainingMines = 0;
+            int adjacentUnrevealedTiles = 0;
+
+            foreach (var revealedTile in adjacentRevealedTiles)
+            {
+                // Calculate the number of remaining mines adjacent to the revealed tile
+                var adjacentFlags = GetAdjacentTiles(revealedTile)
+                    .Count(t => t.HasFlagApplied);
+                remainingMines += revealedTile.NeighboringMines - adjacentFlags;
+
+                // Count the number of unrevealed tiles adjacent to the revealed tile
+                adjacentUnrevealedTiles += GetAdjacentTiles(revealedTile)
+                    .Count(t => !t.IsRevealed);
+            }
+
+            // Calculate the probability
+            if (adjacentUnrevealedTiles == 0)
+                return 0;
+            else
+                return (double)remainingMines / adjacentUnrevealedTiles;
+        }
+
+        private Dictionary<int, List<Models.Tile>> adjacentTileCache = new();
+
+        public List<Models.Tile> GetAdjacentTiles(Models.Tile tile)
+        {
+            if(adjacentTileCache.TryGetValue(tile.X * tile.Y, out var cachedTiles))
+            {
+                return cachedTiles;
+            }
+
+            var adjacentTiles = new List<Models.Tile>();
+            int boardSize = _gameSize;
+
+            for (int dx = -1; dx <= 1; dx++)
+            {
+                for (int dy = -1; dy <= 1; dy++)
+                {
+                    int newX = tile.X + dx;
+                    int newY = tile.Y + dy;
+
+                    // Check if the new position is within the board boundaries
+                    if (newX >= 0 && newX < boardSize && newY >= 0 && newY < boardSize)
+                    {
+                        // Exclude the tile itself
+                        if (dx != 0 || dy != 0)
+                        {
+                            try
+                            {
+                                adjacentTiles.Add(GameManager.Game[newX][newY]);
+                            }
+                            catch (IndexOutOfRangeException)
+                            {
+                                Console.WriteLine($"Index out of range: newX={newX}, newY={newY}, boardSize={boardSize}");
+                                throw;
+                            }
+                        }
+                    }
+                }
+            }
+
+            adjacentTileCache[tile.X * tile.Y] = adjacentTiles;
+
+            return adjacentTiles;
+        }
+    }

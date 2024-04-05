@@ -1,0 +1,34 @@
+﻿<MudAnimate AnimationType="MudExtensions.Enums.AnimationType.Scale"
+            AnimationTiming="MudExtensions.Enums.AnimationTiming.EaseInOut"
+            AnimationDirection="MudExtensions.Enums.AnimationDirection.AlternateReverse"
+            AnimationFillMode="MudExtensions.Enums.AnimationFillMode.None"
+            Delay="0"
+            Selector=".intense-number"
+            Value="1" ValueSecondary="@(1 + (0.05 * Number))" Paused="false" Infinite="true"/>
+
+        <MudText Class="@(AnimationEnabled ? "intense-number" : "")" Color="@Color" Style="text-align:center;font-size:xx-large;outline:none;">
+           @Number
+        </MudText>
+
+@code {
+    [Parameter]
+    public int Number { get; set; } = 1;
+
+    private MudBlazor.Color Color => Number switch
+    {
+        1 => Color.Tertiary,
+        2 => Color.Info,
+        3 => Color.Warning,
+        _ => Color.Error,
+    };
+
+    private bool AnimationEnabled => Number switch
+    {
+        4 => true,
+        5 => true,
+        6 => true,
+        7 => true,
+        8 => true,
+        _ => false,
+    };
+}

@@ -1,0 +1,41 @@
+﻿<div @oncontextmenu:preventDefault="true" style="text-align:center;font-size:xx-large;">
+
+        <MudPaper Square="true" Class="flex-grow-1" MinHeight="50px" MinWidth="50px" MaxHeight="50px" MaxWidth="50px" Elevation="@(Data.IsRevealed
+                                                                                                                             ? Data.NeighboringMines > 0
+                                                                                                                                ? Data.NeighboringMines * 2
+                                                                                                                                : 0
+                                                                                                                             : 1)" @onclick="async () => TileClicked.InvokeAsync(Data)" @oncontextmenu="async () => FlagApplied.InvokeAsync(Data)">
+
+            @if (Data.ShowDistance || (Data.IsRevealed && !Data.IsMine))
+            {
+                <IntenseNumber Number="@Data.NeighboringMines" />
+            }
+
+            @if (Data.IsRevealed)
+            {
+                @(Data.IsMine ? "💣" : "")
+            }
+            else if (Data.HasFlagApplied)
+            {
+                @:🏁
+            }
+
+        </MudPaper>
+</div>
+@code {
+    [Parameter]
+    public Models.Tile Data { get; set; } = default!;
+
+    [Parameter]
+    public EventCallback<Models.Tile> TileClicked { get; set; }
+
+    [Parameter]
+    public EventCallback<Models.Tile> FlagApplied { get; set; }
+
+    [Parameter]
+    public string Height { get; set; } = "50px";
+
+    [Parameter]
+    public string Width { get; set; } = "50px";
+}
+

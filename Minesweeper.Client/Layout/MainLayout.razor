@@ -1,0 +1,80 @@
+﻿@inherits LayoutComponentBase
+@using Minesweeper.Client.Components
+
+
+<MudLayout>
+    <MudAppBar Elevation="1">
+        <MudText Typo="Typo.h5" Class="ml-3">💣 Blazesweeper</MudText>
+        <MudSpacer />
+        @if (_isDarkMode)
+        {
+            <MudTooltip Text="Light Mode">
+                <MudIconButton Icon="@Icons.Material.Outlined.LightMode" OnClick="ToggleDarkMode" />
+            </MudTooltip>
+        }
+        else
+        {
+            <MudTooltip Text="Dark Mode">
+                <MudIconButton Icon="@Icons.Material.Outlined.DarkMode" OnClick="ToggleDarkMode" />
+            </MudTooltip>
+        }
+        <MudTooltip Text="Settings">
+            <MudIconButton Icon="@Icons.Material.Outlined.Settings" OnClick="OpenSettings" />
+        </MudTooltip>
+    </MudAppBar>
+    <MudMainContent>
+        <CascadingValue Value="_settings">
+            @Body
+        </CascadingValue>
+    </MudMainContent>
+</MudLayout>
+
+<MudThemeProvider @ref="@_mudThemeProvider" @bind-IsDarkMode="@_isDarkMode" />
+<MudDialogProvider />
+<MudSnackbarProvider />
+
+@code {
+    [Inject]
+    IDialogService DialogService { get; set; } = default!;
+    private bool _isDarkMode;
+    private MudThemeProvider _mudThemeProvider;
+    private MinesweeperGameSettings _settings = new()
+    {
+        Mines = 10,
+        Size = 10,
+    };
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _isDarkMode = await _mudThemeProvider.GetSystemPreference();
+            StateHasChanged();
+        }
+    }
+
+    private void ToggleDarkMode()
+    {
+        _isDarkMode = !_isDarkMode;
+    }
+
+    protected async Task OpenSettings()
+    {
+        var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Small, FullWidth = true };
+        var parameters = new DialogParameters<SettingsDialog>();
+        parameters.Add(x => x.Settings, _settings);
+        var dialogRef = await DialogService.ShowAsync<SettingsDialog>("Settings", parameters, options);
+
+        var result = await dialogRef.Result;
+        if(!result.Canceled)
+        {
+            var settings = (MinesweeperGameSettings)result.Data;
+            Console.WriteLine(settings.Mines);
+            _settings.Mines = settings.Mines;
+            _settings.Size = settings.Size;
+            StateHasChanged();
+            Console.WriteLine(_settings.Mines);
+        }
+
+    }
+}

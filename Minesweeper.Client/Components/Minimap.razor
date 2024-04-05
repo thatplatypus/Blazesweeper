@@ -1,0 +1,33 @@
+﻿@using Minesweeper
+
+<div class="minimap">
+    @for (int i = 0; i < Manager.Game.Length; i++)
+    {
+        for (int j = 0; j < Manager.Game.Length; j++)
+        {
+            <div class="minimap-tile" style="background-color: @GetTileColor(i, j)" @onclick="() => ScrollToTile(i, j)"></div>
+        }
+    }
+</div>
+
+@code {
+    [Parameter]
+    public IGameManager Manager { get; set; }
+
+    private string GetTileColor(int x, int y)
+    {
+        var tile = Manager.Game[x][y];
+        if (!tile.IsRevealed)
+            return "gray";
+        if (tile.IsMine)
+            return "red";
+        if (tile.HasFlagApplied)
+            return "blue";
+        return "white";
+    }
+
+    private void ScrollToTile(int x, int y)
+    {
+        // Implement scrolling logic here
+    }
+}
