@@ -9,17 +9,22 @@
         @if (_isDarkMode)
         {
             <MudTooltip Text="Light Mode">
-                <MudIconButton Icon="@Icons.Material.Outlined.LightMode" OnClick="ToggleDarkMode" />
+                <MudIconButton Icon="@Icons.Material.Outlined.LightMode" OnClick="ToggleDarkMode" Color="Color.Inherit" />
             </MudTooltip>
         }
         else
         {
             <MudTooltip Text="Dark Mode">
-                <MudIconButton Icon="@Icons.Material.Outlined.DarkMode" OnClick="ToggleDarkMode" />
+                <MudIconButton Icon="@Icons.Material.Outlined.DarkMode" OnClick="ToggleDarkMode" Color="Color.Inherit" />
             </MudTooltip>
         }
+
+        <MudTooltip Text="GitHub">
+            <MudIconButton Href="https://github.com/thatplatypus/Blazesweeper" Target="_blank" Icon="@Icons.Custom.Brands.GitHub" Color="Color.Inherit" />
+        </MudTooltip>
+
         <MudTooltip Text="Settings">
-            <MudIconButton Icon="@Icons.Material.Outlined.Settings" OnClick="OpenSettings" />
+            <MudIconButton Icon="@Icons.Material.Outlined.Settings" OnClick="OpenSettings" Color="Color.Inherit" />
         </MudTooltip>
     </MudAppBar>
     <MudMainContent>
@@ -66,7 +71,7 @@
         var dialogRef = await DialogService.ShowAsync<SettingsDialog>("Settings", parameters, options);
 
         var result = await dialogRef.Result;
-        if(!result.Canceled)
+        if (!result.Canceled)
         {
             var settings = (MinesweeperGameSettings)result.Data;
             Console.WriteLine(settings.Mines);
